@@ -1,7 +1,6 @@
-import shutil
 from flask import Flask, request, jsonify
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.webdriver import WebDriver as EdgeWebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,31 +10,20 @@ import os
 app = Flask(__name__)
 
 def init_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run headless mode.
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    # Set the binary location to where Chromium is installed.
-    chrome_options.binary_location = "/usr/bin/chromium"
+    edge_options = EdgeOptions()
+    edge_options.add_argument("--headless")  # Run in headless mode.
+    edge_options.add_argument("--disable-gpu")
+    edge_options.add_argument("--no-sandbox")
+    edge_options.add_argument("--disable-dev-shm-usage")
+    # Specify the binary location if needed (adjust if necessary):
+    edge_options.binary_location = "/usr/bin/microsoft-edge"
     
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = EdgeWebDriver(options=edge_options)
     return driver
-
 
 @app.route('/')
 def index():
-    return jsonify({"message": "123Movies Scraper API is running"})
-
-# Temporary endpoint to check for Chrome binary
-@app.route('/check_chrome', methods=['GET'])
-def check_chrome():
-    chrome_path = shutil.which("google-chrome")
-    chromium_path = shutil.which("chromium-browser")
-    return jsonify({
-        "google-chrome": chrome_path,
-        "chromium-browser": chromium_path
-    })
+    return jsonify({"message": "123Movies Scraper API using MS Edge is running"})
 
 @app.route('/scrape/movie', methods=['GET'])
 def scrape_movie():
@@ -43,6 +31,7 @@ def scrape_movie():
     if not movie_name:
         return jsonify({"error": "movie_name parameter is required"}), 400
 
+    # Construct the search URL for the target site.
     search_url = f"https://ww3.0123movies.com.co/?s={movie_name}"
     driver = init_driver()
     driver.get(search_url)
@@ -59,6 +48,7 @@ def scrape_movie():
     movie_options = []
     movie_links = []
     counter = 1
+
     for result in results:
         try:
             title_element = result.find_element(By.CSS_SELECTOR, 'h2.movie-title')
