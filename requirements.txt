@@ -1,4 +1,5 @@
 requests
 beautifulsoup4
 flask  # Only if using Flask
-selenium  # Only if using Selenium
+selenium==4.10.0
+webdriver-manager==4.0.0
