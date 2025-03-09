@@ -12,15 +12,16 @@ app = Flask(__name__)
 
 def init_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode.
+    chrome_options.add_argument("--headless")  # Run headless mode.
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Specify the Chrome binary location (update as needed)
-    chrome_options.binary_location = "/usr/bin/google-chrome"
+    # Set the binary location to where Chromium is installed.
+    chrome_options.binary_location = "/usr/bin/chromium"
     
     driver = webdriver.Chrome(options=chrome_options)
     return driver
+
 
 @app.route('/')
 def index():
