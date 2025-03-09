@@ -1,0 +1,4 @@
+requests
+beautifulsoup4
+flask  # Only if using Flask
+selenium  # Only if using Selenium
