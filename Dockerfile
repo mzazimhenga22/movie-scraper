@@ -38,3 +38,4 @@ COPY . .
 # Specify the port Render uses (default 10000) and run the app
 EXPOSE 10000
 CMD ["python", "main.py"]
+
