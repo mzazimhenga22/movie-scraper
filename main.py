@@ -11,14 +11,16 @@ app = Flask(__name__)
 
 def init_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # headless mode
+    chrome_options.add_argument("--headless")  # Run in headless mode.
     chrome_options.add_argument("--disable-gpu")
-    # Possibly needed on some servers:
-    # chrome_options.add_argument("--no-sandbox")
-    # chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    # Specify the path to the Chrome binary installed in your Docker image.
+    chrome_options.binary_location = "/usr/bin/google-chrome"
     
     driver = webdriver.Chrome(options=chrome_options)
     return driver
+
 
 @app.route('/')
 def index():
