@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import os
 
@@ -9,9 +11,12 @@ app = Flask(__name__)
 
 def init_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode.
+    chrome_options.add_argument("--headless")  # headless mode
     chrome_options.add_argument("--disable-gpu")
-    # Add other options if necessary (e.g., --no-sandbox)
+    # Possibly needed on some servers:
+    # chrome_options.add_argument("--no-sandbox")
+    # chrome_options.add_argument("--disable-dev-shm-usage")
+    
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
@@ -25,93 +30,47 @@ def scrape_movie():
     if not movie_name:
         return jsonify({"error": "movie_name parameter is required"}), 400
 
+    # Build the search URL
     search_url = f"https://reelgood.com/search?q={movie_name}"
     driver = init_driver()
     driver.get(search_url)
-    # Wait for the page to load dynamic content.
-    time.sleep(5)  # Consider using WebDriverWait for a more robust solution.
 
-    # Find elements using Selenium.
-    results = driver.find_elements(By.CSS_SELECTOR, 'a[data-testid="result-item"]')
+    try:
+        # Wait up to 15s for search results to appear
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[data-testid="content-listing-link"]'))
+        )
+    except Exception as e:
+        driver.quit()
+        return jsonify({"error": f"No results or page took too long to load: {str(e)}"}), 404
+
+    # Now find all result links
+    result_links = driver.find_elements(By.CSS_SELECTOR, 'a[data-testid="content-listing-link"]')
     movie_options = []
     movie_links = []
     counter = 1
-    for result in results:
+
+    for link_element in result_links:
         try:
-            title_element = result.find_element(By.CSS_SELECTOR, 'div.result-title')
+            # Title is in <span data-testid="content-listing-title">Inception</span>
+            title_element = link_element.find_element(By.CSS_SELECTOR, 'span[data-testid="content-listing-title"]')
             title = title_element.text.strip()
         except Exception:
-            title = result.text.strip()
-        link = result.get_attribute("href")
-        if link and not link.startswith("http"):
-            link = "https://reelgood.com" + link
+            # Fallback: get text from the link itself
+            title = link_element.text.strip()
+
+        href = link_element.get_attribute("href")
+        if href and not href.startswith("http"):
+            href = "https://reelgood.com" + href
+
         movie_options.append({"option": counter, "title": title})
-        movie_links.append(link)
+        movie_links.append(href)
         counter += 1
 
     driver.quit()
     return jsonify({
         "movie_options": movie_options,
         "movie_links": movie_links
-    })
-
-@app.route('/scrape/movie/stream', methods=['GET'])
-def scrape_movie_stream():
-    movie_url = request.args.get('movie_url')
-    if not movie_url:
-        return jsonify({"error": "movie_url parameter is required"}), 400
-
-    driver = init_driver()
-    driver.get(movie_url)
-    time.sleep(5)
-
-    try:
-        stream_link_element = driver.find_element(By.CSS_SELECTOR, 'a.streaming-link')
-        stream_link = stream_link_element.get_attribute("href")
-        if stream_link and not stream_link.startswith("http"):
-            stream_link = "https://reelgood.com" + stream_link
-    except Exception:
-        driver.quit()
-        return jsonify({"error": "Stream link not found"}), 404
-
-    driver.quit()
-    return jsonify({"stream_link": stream_link})
-
-@app.route('/scrape/series', methods=['GET'])
-def scrape_series():
-    series_name = request.args.get('series_name')
-    if not series_name:
-        return jsonify({"error": "series_name parameter is required"}), 400
-
-    search_url = f"https://reelgood.com/search?q={series_name}"
-    driver = init_driver()
-    driver.get(search_url)
-    time.sleep(5)
-
-    results = driver.find_elements(By.CSS_SELECTOR, 'a[data-testid="result-item"]')
-    series_options = []
-    series_links = []
-    counter = 1
-    for result in results:
-        # Check if the result is tagged as TV (assuming a "data-type" attribute indicates this).
-        data_type = result.get_attribute("data-type")
-        if data_type and data_type.lower() == "tv":
-            try:
-                title_element = result.find_element(By.CSS_SELECTOR, 'div.result-title')
-                title = title_element.text.strip()
-            except Exception:
-                title = result.text.strip()
-            link = result.get_attribute("href")
-            if link and not link.startswith("http"):
-                link = "https://reelgood.com" + link
-            series_options.append({"option": counter, "title": title})
-            series_links.append(link)
-            counter += 1
-
-    driver.quit()
-    return jsonify({
-        "series_options": series_options,
-        "series_links": series_links
     })
 
 if __name__ == '__main__':
