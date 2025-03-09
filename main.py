@@ -15,16 +15,15 @@ def init_driver():
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    # Specify the path to the Chrome binary installed in your Docker image.
+    # Specify the binary location if needed (update if necessary)
     chrome_options.binary_location = "/usr/bin/google-chrome"
     
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
-
 @app.route('/')
 def index():
-    return jsonify({"message": "Reelgood Scraper API is running"})
+    return jsonify({"message": "123Movies Scraper API is running"})
 
 @app.route('/scrape/movie', methods=['GET'])
 def scrape_movie():
@@ -32,41 +31,41 @@ def scrape_movie():
     if not movie_name:
         return jsonify({"error": "movie_name parameter is required"}), 400
 
-    # Build the search URL
-    search_url = f"https://reelgood.com/search?q={movie_name}"
+    # Construct the search URL for 123Movies clone.
+    search_url = f"https://ww3.0123movies.com.co/?s={movie_name}"
     driver = init_driver()
     driver.get(search_url)
 
     try:
-        # Wait up to 15s for search results to appear
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'a[data-testid="content-listing-link"]'))
+        # Wait up to 15 seconds for search results to appear.
+        # Update the selector below after inspecting the website's HTML.
+        results = WebDriverWait(driver, 15).until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'div.movie-item'))
         )
     except Exception as e:
         driver.quit()
-        return jsonify({"error": f"No results or page took too long to load: {str(e)}"}), 404
+        return jsonify({"error": f"No results found or page took too long to load: {str(e)}"}), 404
 
-    # Now find all result links
-    result_links = driver.find_elements(By.CSS_SELECTOR, 'a[data-testid="content-listing-link"]')
     movie_options = []
     movie_links = []
     counter = 1
 
-    for link_element in result_links:
+    for result in results:
         try:
-            # Title is in <span data-testid="content-listing-title">Inception</span>
-            title_element = link_element.find_element(By.CSS_SELECTOR, 'span[data-testid="content-listing-title"]')
+            # Update this selector to match the title element on the page.
+            title_element = result.find_element(By.CSS_SELECTOR, 'h2.movie-title')
             title = title_element.text.strip()
         except Exception:
-            # Fallback: get text from the link itself
-            title = link_element.text.strip()
+            title = result.text.strip()
 
-        href = link_element.get_attribute("href")
-        if href and not href.startswith("http"):
-            href = "https://reelgood.com" + href
+        try:
+            # Assuming the movie link is on an <a> tag within the movie item.
+            link = result.find_element(By.TAG_NAME, 'a').get_attribute("href")
+        except Exception:
+            link = ""
 
         movie_options.append({"option": counter, "title": title})
-        movie_links.append(href)
+        movie_links.append(link)
         counter += 1
 
     driver.quit()
