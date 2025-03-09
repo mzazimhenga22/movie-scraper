@@ -35,7 +35,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of your application code
 COPY . .
 
-# Specify the port Render uses (default 10000) and run the app
+# Expose the port Render uses (default 10000) and run the app
 EXPOSE 10000
 CMD ["python", "main.py"]
-
